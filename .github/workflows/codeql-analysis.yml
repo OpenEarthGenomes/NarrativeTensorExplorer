@@ -32,19 +32,15 @@ jobs:
         languages: 'java-kotlin, cpp'
         queries: security-and-quality
 
-    # JAVÍTOTT BUILD: Megkeresi a gradlew-t és ott futtatja az elemzést
+    # LÉTREHOZZUK A WRAPPERT HA HIÁNYZIK
     - name: Build with Gradle
       run: |
-        GRADLEW_FILE=$(find . -name "gradlew" | head -n 1)
-        if [ -z "$GRADLEW_FILE" ]; then
-          echo "Hiba: Nincs gradlew! Alapértelmezett build..."
-          gradle assembleDebug --no-daemon
-        else
-          chmod +x "$GRADLEW_FILE"
-          GRADLE_DIR=$(dirname "$GRADLEW_FILE")
-          cd "$GRADLE_DIR"
-          ./gradlew assembleDebug --no-daemon -Pandroid.experimental.privacysandboxsdk.enable=false
+        if [ ! -f "gradlew" ]; then
+          echo "Gradle wrapper létrehozása..."
+          gradle wrapper
         fi
+        chmod +x gradlew
+        ./gradlew :app:assembleDebug --no-daemon
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
