@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.map
 import kotlin.math.*
 
 /**
- * 3D NARRATÍV TÉRKÉP - OKOS IMPLEMENTÁCIÓ
- * Tartalmazza a transzformációkat, gráfelméleti keresőt és a kamera állapotát.
+ * 3D NARRATÍV TÉRKÉP - A RENDSZER AGYA
+ * Kezeli a térbeli transzformációkat, a navigációt és a gráfelemzést.
  */
 data class NarrativeMap3D(
     val id: String = generateMapId(),
@@ -20,13 +20,21 @@ data class NarrativeMap3D(
     val timestamp: Long = System.currentTimeMillis()
 ) {
     
-    // === ALAP MŰVELETEK ===
+    // === KERESÉS ÉS LEKÉRDEZÉS ===
     fun getPointById(id: Long): QuantizedNarrativeEntity? = points.find { it.id == id }
     
     fun getConnectionsForPoint(pointId: Long): List<NarrativeConnection> = 
         connections.filter { it.fromId == pointId || it.toId == pointId }
+    
+    fun getNeighbors(pointId: Long): List<QuantizedNarrativeEntity> {
+        val neighborIds = connections
+            .filter { it.fromId == pointId || it.toId == pointId }
+            .map { if (it.fromId == pointId) it.toId else it.fromId }
+            .toSet()
+        return points.filter { it.id in neighborIds }
+    }
 
-    // === 3D TRANSZFORMÁCIÓK (A UI-hoz elengedhetetlen) ===
+    // === 3D MATEK (FORGATÁS, SKÁLÁZÁS) ===
     fun rotateY(angle: Float): NarrativeMap3D {
         val rad = angle * PI.toFloat() / 180f
         val cos = cos(rad)
@@ -39,7 +47,19 @@ data class NarrativeMap3D(
         return this.copy(points = rotatedPoints)
     }
 
-    // === GRÁF ANALÍZIS ===
+    fun rotateX(angle: Float): NarrativeMap3D {
+        val rad = angle * PI.toFloat() / 180f
+        val cos = cos(rad)
+        val sin = sin(rad)
+        val rotatedPoints = points.map { entity ->
+            val y = entity.coordY * cos - entity.coordZ * sin
+            val z = entity.coordY * sin + entity.coordZ * cos
+            entity.copy(coordY = y, coordZ = z)
+        }
+        return this.copy(points = rotatedPoints)
+    }
+
+    // === GRÁF ANALÍZIS (Dijkstra útvonalkereső) ===
     fun findShortestPath(startId: Long, endId: Long): List<Long> {
         if (startId == endId) return listOf(startId)
         val distances = mutableMapOf<Long, Float>()
@@ -57,7 +77,8 @@ data class NarrativeMap3D(
             connections.filter { it.fromId == current || it.toId == current }.forEach { conn ->
                 val neighbor = if (conn.fromId == current) conn.toId else conn.fromId
                 if (neighbor in unvisited) {
-                    val alt = distances[current]!! + (1f - conn.strength)
+                    // Súlyozás: 1.0 - erősség (minél erősebb a kapcsolat, annál "rövidebb" az út)
+                    val alt = distances[current]!! + (1.0f - conn.strength)
                     if (alt < (distances[neighbor] ?: Float.MAX_VALUE)) {
                         distances[neighbor] = alt
                         previous[neighbor] = current
@@ -75,29 +96,41 @@ data class NarrativeMap3D(
     }
 
     companion object {
-        fun generateMapId() = "map_${System.currentTimeMillis()}"
+        fun generateMapId(): String = "map_${System.currentTimeMillis()}"
 
-        // Statikus kapcsolat generálás a pontok között
-        fun generateConnections(entities: List<QuantizedNarrativeEntity>): List<NarrativeConnection> {
+        // Statikus gyár a Flow-hoz
+        fun fromEntities(entities: List<QuantizedNarrativeEntity>): NarrativeMap3D {
+            val connections = generateConnections(entities)
+            return NarrativeMap3D(
+                points = entities,
+                connections = connections,
+                center = entities.firstOrNull(),
+                metrics = MapMetrics(
+                    pointCount = entities.size,
+                    connectionCount = connections.size,
+                    averageDensity = if (entities.isNotEmpty()) entities.map { it.semanticDensity }.average().toFloat() else 0f
+                )
+            )
+        }
+
+        private fun generateConnections(entities: List<QuantizedNarrativeEntity>): List<NarrativeConnection> {
             val connections = mutableListOf<NarrativeConnection>()
             entities.forEachIndexed { i, entityA ->
                 entities.filterIndexed { j, _ -> i != j }
                     .sortedBy { entityB -> calculateDist(entityA, entityB) }
-                    .take(3)
+                    .take(3) // Minden ponthoz a 3 legközelebbit kötjük be
                     .forEach { entityB ->
                         val d = calculateDist(entityA, entityB)
-                        val sim = 0.7f // Egyszerűsített sémantikai hasonlóság
                         connections.add(
                             NarrativeConnection(
                                 id = 0,
                                 fromId = entityA.id,
                                 toId = entityB.id,
-                                strength = sim,
-                                connectionType = "auto",
+                                strength = 0.7f, 
+                                connectionType = "auto_link",
                                 distance3D = d,
-                                semanticSimilarity = sim,
-                                creationTime = System.currentTimeMillis(),
-                                usageCount = 0
+                                semanticSimilarity = 0.7f,
+                                creationTime = System.currentTimeMillis()
                             )
                         )
                     }
@@ -111,7 +144,7 @@ data class NarrativeMap3D(
     }
 }
 
-// === KIEGÉSZÍTŐ ADATSTRUKTÚRÁK (Ha nem lennének máshol definiálva) ===
+// === HIÁNYZÓ UI ÁLLAPOTOK (Csak ami ide kell) ===
 
 data class CameraState(
     val position: Point3D = Point3D(0f, 0f, -5f),
@@ -119,16 +152,11 @@ data class CameraState(
     val zoom: Float = 1.0f
 )
 
-data class Point3D(val x: Float, val y: Float, val z: Float)
-
 data class ViewSettings(
     val showLabels: Boolean = true,
     val pointSize: Float = 2.0f,
-    val colorMode: String = "FAMILY"
+    val colorMode: String = "FAMILY",
+    val showConnections: Boolean = true
 )
 
-data class BoundingBox(
-    val minX: Float, val maxX: Float,
-    val minY: Float, val maxY: Float,
-    val minZ: Float, val maxZ: Float
-)
+data class Point3D(val x: Float, val y: Float, val z: Float)
