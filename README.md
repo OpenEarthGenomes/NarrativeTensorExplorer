@@ -167,6 +167,52 @@ This project is licensed under the **MIT License**. See the `LICENSE` file for d
 
 
 
+.github/
+├── workflows/
+│   ├── android-build.yml          # Main CI/CD
+│   ├── codeql-analysis.yml        # Security scanning
+│   └── dependency-review.yml      # Dependency checking
+├── dependabot.yml
+├── ISSUE_TEMPLATE/
+│   ├── bug_report.md
+│   ├── feature_request.md
+│   └── performance_issue.md
+└── PULL_REQUEST_TEMPLATE.md
+
+app/
+├── src/
+│   ├── main/
+│   │   ├── cpp/
+│   │   │   ├── CMakeLists.txt     # C++ build config
+│   │   │   └── meaning-kernel.cpp # NEON kernel
+│   │   └── ...                    # Kotlin code
+│   ├── androidTest/               # Instrumentation tests
+│   └── test/                      # Unit tests
+├── build.gradle.kts
+└── proguard-rules.pro
+
+benchmark/
+├── src/androidTest/               # Benchmark tests
+└── build.gradle.kts
+
+scripts/
+├── build-native.sh                # Native build script
+├── test-neon.sh                   # NEON test script
+├── run-benchmarks.sh              # Benchmark runner
+└── analyze-apk.sh                 # APK analyzer
+
+gradle/
+└── wrapper/
+    ├── gradle-wrapper.jar
+    └── gradle-wrapper.properties
+
+build.gradle.kts                   # Root build config
+gradle.properties                  # Gradle properties
+settings.gradle.kts                # Project settings
+proguard-rules.pro                 # ProGuard rules
+
+
+
 ## 🚀 Quick Start
 1. Connect device (Samsung A35 recommended)
 2. Run `build_all.bat`
