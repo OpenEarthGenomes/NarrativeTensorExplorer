@@ -26,11 +26,33 @@ android {
         }
     }
 
+    // TESZT ÜZEMMÓD: Csak akkor használunk aláírást, ha vannak Secrets-ek
+    signingConfigs {
+        val hasSecrets = System.getenv("RELEASE_STORE_PASSWORD") != null
+        if (hasSecrets) {
+            create("release") {
+                storeFile = file(System.getenv("RELEASE_KEYSTORE_PATH") ?: "debug.keystore")
+                storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            // Ha van titkos kulcs, aláírjuk, ha nincs, marad debug kulcson
+            signingConfig = if (System.getenv("RELEASE_STORE_PASSWORD") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -58,7 +80,6 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "META-INF/versions/9/previous-compilation-data.bin"
         }
     }
 }
@@ -72,7 +93,6 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("com.jakewharton.timber:timber:5.0.1")
     
-    // Room
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
