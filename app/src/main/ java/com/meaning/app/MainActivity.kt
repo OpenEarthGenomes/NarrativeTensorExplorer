@@ -28,7 +28,7 @@ import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
 
-    // Lazy inicializálás az erőforrás-igényes komponensekhez
+    // Erőforrások lazy betöltése
     private val database by lazy { NarrativeDatabase.getInstance(this) }
     private val narrativeKernel by lazy { NarrativeKernel(database.narrativeDao()) }
     private val gestureController by lazy { Narrative3DGestureController() }
@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Android 15+ Edge-to-Edge támogatás
+        // Teljes kijelzős mód aktiválása
         enableEdgeToEdge()
 
         setContent {
@@ -60,7 +60,7 @@ fun MeaningAppContent(
     var showSearch by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    // 1. Kamera állapot figyelése
+    // Kamera állapota
     val cameraState by produceState(gestureController.getCurrentState()) {
         gestureController.startAutoRotation(
             speed = 0.05f,
@@ -68,7 +68,7 @@ fun MeaningAppContent(
         ) { newState -> value = newState }
     }
 
-    // 2. Real-time adatfolyam figyelése a Kernel új Flow-jával
+    // Élő adatfolyam a Kernelből (3D pontok és kapcsolatok)
     val mapData by kernel.observeNarrativeSpace().collectAsState(
         initial = NarrativeMap3D(emptyList(), emptyList(), null, MapMetrics(0, 0, 0f))
     )
@@ -116,7 +116,7 @@ fun MeaningAppContent(
                     )
                 }
                 AppView.DIMENSION_FOREST -> {
-                    // Itt a mapData pontjait használjuk fel az erdőhöz
+                    // Itt hívjuk meg az új UI komponenst
                     DimensionForestView(
                         entities = mapData.points,
                         modifier = Modifier.fillMaxSize()
@@ -124,7 +124,7 @@ fun MeaningAppContent(
                 }
             }
 
-            // HUD / Vezérlők
+            // HUD réteg (Metrikák kijelzése)
             ControlOverlay(
                 cameraState = cameraState,
                 metrics = mapData.metrics,
@@ -133,16 +133,11 @@ fun MeaningAppContent(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Keresési felület
             if (showSearch) {
                 SearchOverlay(
                     searchText = searchText,
                     onSearchTextChanged = { searchText = it },
-                    onSearch = { query ->
-                        // Itt hívjuk meg a Kernel keresőjét (egy floatArray mintával)
-                        // A valóságban a query stringet vektortá kell alakítani (Embedding)
-                        showSearch = false
-                    },
+                    onSearch = { showSearch = false },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 16.dp)
@@ -177,7 +172,7 @@ fun ThreeDMapView(
     }
 }
 
-// === KIEGÉSZÍTŐ ENUM ÉS TÉMA ===
+// === ENUMOK ÉS TÉMA ===
 
 enum class AppView { THREE_D_MAP, DIMENSION_FOREST }
 
