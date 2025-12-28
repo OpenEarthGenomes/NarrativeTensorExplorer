@@ -98,5 +98,8 @@ set_target_properties(meaning-kernel PROPERTIES
 find_library(log-lib log)
 find_library(android-lib android)
 
+# ... a fájl vége legyen ez:
 target_link_libraries(meaning-kernel PRIVATE
-    ${
+    ${log-lib}
+    ${android-lib}
+)
