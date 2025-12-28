@@ -218,3 +218,103 @@ proguard-rules.pro                 # ProGuard rules
 2. Run `build_all.bat`
 3. Explore the Dimension Forest
 
+
+
+
+
+
+
+NarrativeTensorExplorer/
+├── .github/                          # GitHub automations
+│   ├── workflows/
+│   │   ├── android-build.yml         # Main CI/CD workflow
+│   │   ├── codeql-analysis.yml       # Security scanning
+│   │   └── dependency-review.yml     # Dependency updates
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   ├── feature_request.md
+│   │   └── performance_issue.md
+│   └── dependabot.yml                # Auto dependency updates
+│
+├── app/                              # Main Android application module
+│   ├── src/
+│   │   ├── main/                     # App source code
+│   │   │   ├── cpp/                  # C++ native code
+│   │   │   │   ├── CMakeLists.txt    # C++ build configuration
+│   │   │   │   └── meaning-kernel.cpp # NEON optimized kernel
+│   │   │   │
+│   │   │   ├── java/com/meaning/app/ # Kotlin source packages
+│   │   │   │   ├── db/               # Database layer
+│   │   │   │   │   ├── Converters.kt
+│   │   │   │   │   ├── Extensions.kt
+│   │   │   │   │   ├── NarrativeConnectionDao.kt
+│   │   │   │   │   ├── NarrativeConnectionEntity.kt
+│   │   │   │   │   ├── NarrativeDao.kt
+│   │   │   │   │   ├── NarrativeDatabase.kt
+│   │   │   │   │   └── QuantizedNarrativeEntity.kt
+│   │   │   │   │
+│   │   │   │   ├── kernel/           # Core processing kernel
+│   │   │   │   │   ├── MapMetrics.kt
+│   │   │   │   │   ├── Narrative3DGestureController.kt
+│   │   │   │   │   ├── NarrativeConnection.kt
+│   │   │   │   │   ├── NarrativeKernel.kt
+│   │   │   │   │   ├── NarrativeMap3D.kt
+│   │   │   │   │   ├── QuantizationEngine.kt
+│   │   │   │   │   └── SearchResult.kt
+│   │   │   │   │
+│   │   │   │   ├── ui/               # UI components
+│   │   │   │   │   ├── CameraInfoOverlay.kt
+│   │   │   │   │   ├── ControlOverlay.kt
+│   │   │   │   │   ├── DimensionForestView.kt
+│   │   │   │   │   ├── EntityDetailPanel.kt
+│   │   │   │   │   ├── NarrativeMap3DView.kt
+│   │   │   │   │   ├── ProjectedPoint.kt
+│   │   │   │   │   ├── SearchOverlay.kt
+│   │   │   │   │   └── VisualToken.kt
+│   │   │   │   │
+│   │   │   │   ├── AppView.kt
+│   │   │   │   ├── MainActivity.kt
+│   │   │   │   └── MeaningAppTheme.kt
+│   │   │   │
+│   │   │   └── res/                  # Android resources
+│   │   │       ├── values/
+│   │   │       │   ├── colors.xml
+│   │   │       │   ├── strings.xml
+│   │   │       │   └── themes.xml
+│   │   │       └── AndroidManifest.xml
+│   │   │
+│   │   ├── androidTest/              # Instrumentation tests
+│   │   │   └── java/com/meaning/app/
+│   │   │       ├── NarrativeKernelTest.kt
+│   │   │       └── UITests.kt
+│   │   │
+│   │   └── test/                     # Unit tests
+│   │       └── java/com/meaning/app/
+│   │           └── QuantizationTest.kt
+│   │
+│   ├── build.gradle.kts              # App module gradle config
+│   └── proguard-rules.pro            # App specific proguard rules
+│
+├── benchmark/                        # Performance benchmark module
+│   ├── src/androidTest/java/com/meaning/app/benchmark/
+│   │   ├── ComposeUIBenchmark.kt
+│   │   ├── NarrativeKernelBenchmark.kt
+│   │   └── QuantizationBenchmark.kt
+│   └── build.gradle.kts              # Benchmark module gradle config
+│
+├── scripts/                          # Build and utility scripts
+│   ├── build-native.sh               # Native library build script
+│   ├── test-neon.sh                  # NEON instruction test
+│   ├── run-benchmarks.sh             # Benchmark runner
+│   └── analyze-apk.sh                # APK analysis tool
+│
+├── gradle/                           # Gradle wrapper
+│   └── wrapper/
+│       ├── gradle-wrapper.jar
+│       └── gradle-wrapper.properties
+│
+├── build.gradle.kts                  # Root project build config
+├── gradle.properties                 # Gradle properties file
+├── settings.gradle.kts               # Project settings
+└── proguard-rules.pro                # Global proguard rules
+
