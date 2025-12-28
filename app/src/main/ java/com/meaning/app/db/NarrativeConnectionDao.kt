@@ -148,4 +148,3 @@ interface NarrativeConnectionDao {
 data class TypeCount(val connection_type: String, val count: Int)
 data class StrongConnection(val fromId: Long, val toId: Long, val strength: Float)
 data class ConnectionPath(val fromId: Long, val toId: Long, val strength: Float, val connectionType: String, val depth: Int, val path: String)
-
