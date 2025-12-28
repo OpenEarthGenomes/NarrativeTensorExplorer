@@ -13,28 +13,36 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import com.meaning.app.db.NarrativeDatabase
-import com.meaning.app.kernel.* // Importálja a Point3D-t és CameraState-et is
-import kotlinx.coroutines.launch
+import com.meaning.app.kernel.*
+import timber.log.Timber
 
+/**
+ * A Narrative Tensor Explorer fő belépési pontja.
+ * Ez az osztály kezeli a Compose UI-t és a 3D-s tér vizualizációját.
+ */
 class MainActivity : ComponentActivity() {
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Adatbázis indítása (egyszerűsített Dependency Injection nélkül a példa kedvéért)
+        // Adatbázis és Repository példányosítása
+        // Később érdemes lesz Hilt-re vagy Koin-ra váltani
         val db = NarrativeDatabase.getInstance(applicationContext)
         val repository = NarrativeRepository(db.narrativeDao(), db.connectionDao())
         
-        // Gesztus vezérlő
+        // 3D vezérlő logika inicializálása
         val gestureController = Narrative3DGestureController()
+
+        Timber.i("MainActivity created. UI starting...")
 
         setContent {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF101018) // Sötét háttér a világűrhöz
+                    color = Color(0xFF101018) // Deep space sötétkék
                 ) {
                     NarrativeSpaceCanvas(gestureController)
                 }
@@ -45,58 +53,66 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NarrativeSpaceCanvas(gestureController: Narrative3DGestureController) {
-    // Állapot figyelése a Controllerből
+    // Állapot figyelése: ha a controllerben változik valami, a Compose újrarajzolja
     var cameraState by remember { mutableStateOf(gestureController.currentState) }
     
-    // Coroutine scope animációkhoz
+    // Coroutine scope az esetleges animációkhoz (pl. "berúgott" forgatás megállítása)
     val scope = rememberCoroutineScope()
 
     Canvas(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    // Zoom és Panning kezelése
+                detectTransformGestures { _, _, zoom, _ ->
+                    // Zoom (csíptetés) kezelése
                     gestureController.handlePinch(zoom)
-                    // Frissítjük a UI állapotot
                     cameraState = gestureController.currentState
                 }
             }
             .pointerInput(Unit) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
-                    // Forgatás kezelése
+                    // 3D Forgatás (húzás) kezelése
                     gestureController.handleDrag(dragAmount)
                     cameraState = gestureController.currentState
                 }
             }
     ) {
-        // === RENDERELÉS (Egyszerűsített debug nézet) ===
-        // Itt rajzolnád ki a pontokat a 3D -> 2D vetítéssel
-        
         val width = size.width
         val height = size.height
         val centerX = width / 2
         val centerY = height / 2
 
-        // Debug információ kiírása (hogy lássuk, működik-e a forgatás)
+        // --- 3D -> 2D VETÍTÉS ÉS RENDERELÉS ---
+
+        // Debug információk kirajzolása a képernyőre (Native Canvas használatával)
         drawContext.canvas.nativeCanvas.apply {
+            val paint = android.graphics.Paint().apply {
+                color = android.graphics.Color.WHITE
+                textSize = 40f
+                isAntiAlias = true
+            }
+            
             drawText(
-                "CAM: X=${"%.1f".format(cameraState.rotation.x)} Y=${"%.1f".format(cameraState.rotation.y)} Zoom=${"%.1f".format(cameraState.zoom)}",
-                50f,
-                100f,
-                android.graphics.Paint().apply { 
-                    color = android.graphics.Color.WHITE 
-                    textSize = 40f
-                }
+                "ROT: X=${"%.1f".format(cameraState.rotation.x)} Y=${"%.1f".format(cameraState.rotation.y)}",
+                50f, 100f, paint
+            )
+            drawText(
+                "ZOOM: ${"%.1f".format(cameraState.zoom)}x",
+                50f, 150f, paint
             )
         }
         
-        // Egy referencia kocka középen, hogy érezd a teret
+        // Referencia objektum kirajzolása:
+        // Egy központi kör, amely reagál a zoom mértékére
         drawCircle(
             color = Color.Cyan,
             radius = 20f * cameraState.zoom,
-            center = Offset(centerX, centerY)
+            center = Offset(centerX, centerY),
+            alpha = 0.8f
         )
+
+        // Itt hívnád meg a QuantizationEngine.transform3DCoordinates függvényt
+        // egy pontfelhőre, mielőtt kirajzolod őket a Canvas-ra.
     }
 }
