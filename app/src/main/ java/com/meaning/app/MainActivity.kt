@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
@@ -16,71 +15,64 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Park
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.meaning.app.db.NarrativeDatabase
-import com.meaning.app.kernel.Narrative3DGestureController
-import com.meaning.app.kernel.NarrativeKernel
-import com.meaning.app.kernel.QuantizationEngine
+import com.meaning.app.db.QuantizedNarrativeEntity
+import com.meaning.app.kernel.*
 import com.meaning.app.ui.*
 import com.meaning.app.ui.theme.MeaningAppTheme
-import kotlin.math.PI
 import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
-    
+
     // Lazy inicializálás az erőforrás-igényes komponensekhez
     private val database by lazy { NarrativeDatabase.getInstance(this) }
     private val narrativeKernel by lazy { NarrativeKernel(database.narrativeDao()) }
     private val gestureController by lazy { Narrative3DGestureController() }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 1. Android 15+ Edge-to-Edge támogatás
+        // Android 15+ Edge-to-Edge támogatás
         enableEdgeToEdge()
-        
-        // 2. Kernel teszt a Logcat-ben (Ellenőrizzük a dummy hívást)
-        testEngine()
-        
+
         setContent {
             MeaningAppTheme {
                 MeaningAppContent(
-                    narrativeKernel = narrativeKernel,
+                    kernel = narrativeKernel,
                     gestureController = gestureController
                 )
             }
         }
     }
-
-    private fun testEngine() {
-        val testVector = floatArrayOf(0.5f, -0.2f, 0.8f)
-        val quantized = QuantizationEngine.dummyQuantize(testVector)
-        android.util.Log.i("MeaningArchive", "Engine Test: Vector quantized to ${quantized.size} bytes")
-    }
 }
 
 @Composable
 fun MeaningAppContent(
-    narrativeKernel: NarrativeKernel,
+    kernel: NarrativeKernel,
     gestureController: Narrative3DGestureController
 ) {
     var currentView by remember { mutableStateOf(AppView.THREE_D_MAP) }
     var searchText by remember { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    
-    // Kamera állapot kezelése a GestureController segítségével
+
+    // 1. Kamera állapot figyelése
     val cameraState by produceState(gestureController.getCurrentState()) {
         gestureController.startAutoRotation(
             speed = 0.05f,
             scope = scope
-        ) { newState ->
-            value = newState
-        }
+        ) { newState -> value = newState }
     }
-    
+
+    // 2. Real-time adatfolyam figyelése a Kernel új Flow-jával
+    val mapData by kernel.observeNarrativeSpace().collectAsState(
+        initial = NarrativeMap3D(emptyList(), emptyList(), null, MapMetrics(0, 0, 0f))
+    )
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -117,37 +109,42 @@ fun MeaningAppContent(
             when (currentView) {
                 AppView.THREE_D_MAP -> {
                     ThreeDMapView(
-                        narrativeKernel = narrativeKernel,
+                        mapData = mapData,
                         gestureController = gestureController,
                         cameraState = cameraState,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
                 AppView.DIMENSION_FOREST -> {
+                    // Itt a mapData pontjait használjuk fel az erdőhöz
                     DimensionForestView(
-                        tokens = generateSampleTokens(),
+                        entities = mapData.points,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
             }
-            
-            // HUD / Overlay réteg
+
+            // HUD / Vezérlők
             ControlOverlay(
                 cameraState = cameraState,
+                metrics = mapData.metrics,
                 onControlClick = { direction -> gestureController.moveCamera(direction, 0.3f) },
                 onResetClick = { gestureController.resetCamera() },
-                onSearchClick = { showSearch = true },
-                onExportClick = { /* Export logika */ },
                 modifier = Modifier.fillMaxSize()
             )
-            
+
+            // Keresési felület
             if (showSearch) {
                 SearchOverlay(
                     searchText = searchText,
                     onSearchTextChanged = { searchText = it },
-                    onSearch = { showSearch = false },
+                    onSearch = { query ->
+                        // Itt hívjuk meg a Kernel keresőjét (egy floatArray mintával)
+                        // A valóságban a query stringet vektortá kell alakítani (Embedding)
+                        showSearch = false
+                    },
                     modifier = Modifier
-                        .align(androidx.compose.ui.Alignment.TopCenter)
+                        .align(Alignment.TopCenter)
                         .padding(top = 16.dp)
                 )
             }
@@ -157,26 +154,16 @@ fun MeaningAppContent(
 
 @Composable
 fun ThreeDMapView(
-    narrativeKernel: NarrativeKernel,
+    mapData: NarrativeMap3D,
     gestureController: Narrative3DGestureController,
     cameraState: Narrative3DGestureController.CameraState,
     modifier: Modifier = Modifier
 ) {
-    var entities by remember { mutableStateOf<List<com.meaning.app.db.QuantizedNarrativeEntity>>(emptyList()) }
-    var connections by remember { mutableStateOf<List<NarrativeConnection>>(emptyList()) }
-    
-    // Adatok betöltése az adatbázisból és a kernelből
-    LaunchedEffect(Unit) {
-        val map = narrativeKernel.generate3DMap(maxPoints = 50)
-        entities = map.points
-        connections = map.connections
-    }
-    
     Box(modifier = modifier) {
         NarrativeMap3DView(
             cameraState = cameraState,
-            entities = entities,
-            connections = connections,
+            entities = mapData.points,
+            connections = mapData.connections,
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
@@ -190,15 +177,7 @@ fun ThreeDMapView(
     }
 }
 
-private fun generateSampleTokens(): List<VisualToken> {
-    return listOf(
-        VisualToken("Tenger", 0.95f, 0f),
-        VisualToken("Szabadság", 0.92f, (PI / 6).toFloat()),
-        VisualToken("Szeretet", 0.85f, (PI / 2).toFloat()),
-        VisualToken("Emlékezet", 0.72f, (5 * PI / 6).toFloat()),
-        VisualToken("Halál", 0.45f, (3 * PI / 2).toFloat())
-    )
-}
+// === KIEGÉSZÍTŐ ENUM ÉS TÉMA ===
 
 enum class AppView { THREE_D_MAP, DIMENSION_FOREST }
 
@@ -213,4 +192,3 @@ fun MeaningAppTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
-
