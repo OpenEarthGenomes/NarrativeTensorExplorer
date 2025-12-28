@@ -1,0 +1,50 @@
+{
+  "testConfig": {
+    "unitTests": {
+      "enabled": true,
+      "coverageThreshold": 70,
+      "reportDir": "build/reports/tests"
+    },
+    "instrumentationTests": {
+      "enabled": true,
+      "devices": [
+        {
+          "name": "Pixel 4",
+          "apiLevel": 29,
+          "orientation": "portrait"
+        },
+        {
+          "name": "Galaxy S10",
+          "apiLevel": 29,
+          "orientation": "landscape"
+        }
+      ]
+    },
+    "performanceTests": {
+      "enabled": true,
+      "iterations": 10,
+      "metrics": ["frameTime", "cpuUsage", "memoryUsage"],
+      "thresholds": {
+        "startupTimeMs": 1000,
+        "frameTime95thPercentile": 16,
+        "memoryLeakThresholdMB": 50
+      }
+    },
+    "neonTests": {
+      "enabled": true,
+      "vectorSizes": [64, 128, 256, 512],
+      "operations": ["quantize", "similarity", "transform"]
+    }
+  },
+  "ciConfig": {
+    "runOnPush": true,
+    "runOnPR": true,
+    "cacheEnabled": true,
+    "artifacts": {
+      "apks": true,
+      "testReports": true,
+      "coverageReports": true,
+      "performanceReports": true
+    }
+  }
+}
