@@ -22,26 +22,27 @@ import androidx.compose.ui.unit.dp
 import com.meaning.app.db.NarrativeDatabase
 import com.meaning.app.kernel.Narrative3DGestureController
 import com.meaning.app.kernel.NarrativeKernel
+import com.meaning.app.kernel.QuantizationEngine
 import com.meaning.app.ui.*
+import com.meaning.app.ui.theme.MeaningAppTheme
 import kotlin.math.PI
 import kotlin.math.abs
 
 class MainActivity : ComponentActivity() {
     
-    private lateinit var narrativeKernel: NarrativeKernel
-    private lateinit var gestureController: Narrative3DGestureController
+    // Lazy inicializálás az erőforrás-igényes komponensekhez
+    private val database by lazy { NarrativeDatabase.getInstance(this) }
+    private val narrativeKernel by lazy { NarrativeKernel(database.narrativeDao()) }
+    private val gestureController by lazy { Narrative3DGestureController() }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Android 15/16 edge-to-edge aktiválása (hogy kifusson a széléig)
+        // 1. Android 15+ Edge-to-Edge támogatás
         enableEdgeToEdge()
         
-        // Kernel és Adatbázis inicializálás a TE neveiddel
-        val database = NarrativeDatabase.getInstance(this)
-        // Kijavítva: narrativeDao() hívás a korábbi DB fájl alapján
-        narrativeKernel = NarrativeKernel(database.narrativeDao())
-        gestureController = Narrative3DGestureController()
+        // 2. Kernel teszt a Logcat-ben (Ellenőrizzük a dummy hívást)
+        testEngine()
         
         setContent {
             MeaningAppTheme {
@@ -51,6 +52,12 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    private fun testEngine() {
+        val testVector = floatArrayOf(0.5f, -0.2f, 0.8f)
+        val quantized = QuantizationEngine.dummyQuantize(testVector)
+        android.util.Log.i("MeaningArchive", "Engine Test: Vector quantized to ${quantized.size} bytes")
     }
 }
 
@@ -62,20 +69,25 @@ fun MeaningAppContent(
     var currentView by remember { mutableStateOf(AppView.THREE_D_MAP) }
     var searchText by remember { mutableStateOf("") }
     var showSearch by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     
+    // Kamera állapot kezelése a GestureController segítségével
     val cameraState by produceState(gestureController.getCurrentState()) {
         gestureController.startAutoRotation(
             speed = 0.05f,
-            scope = this // Itt a produceState scope-ját használjuk
+            scope = scope
         ) { newState ->
             value = newState
         }
     }
     
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = { Text("🔮 NARRATÍV TÉRHAJÓZÓ") },
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = MaterialTheme.colors.primary,
                 actions = {
                     IconButton(onClick = { currentView = AppView.THREE_D_MAP }) {
                         Icon(
@@ -119,12 +131,13 @@ fun MeaningAppContent(
                 }
             }
             
+            // HUD / Overlay réteg
             ControlOverlay(
                 cameraState = cameraState,
                 onControlClick = { direction -> gestureController.moveCamera(direction, 0.3f) },
                 onResetClick = { gestureController.resetCamera() },
                 onSearchClick = { showSearch = true },
-                onExportClick = { /* Export */ },
+                onExportClick = { /* Export logika */ },
                 modifier = Modifier.fillMaxSize()
             )
             
@@ -135,7 +148,7 @@ fun MeaningAppContent(
                     onSearch = { showSearch = false },
                     modifier = Modifier
                         .align(androidx.compose.ui.Alignment.TopCenter)
-                        .padding(top = 80.dp)
+                        .padding(top = 16.dp)
                 )
             }
         }
@@ -152,6 +165,7 @@ fun ThreeDMapView(
     var entities by remember { mutableStateOf<List<com.meaning.app.db.QuantizedNarrativeEntity>>(emptyList()) }
     var connections by remember { mutableStateOf<List<NarrativeConnection>>(emptyList()) }
     
+    // Adatok betöltése az adatbázisból és a kernelből
     LaunchedEffect(Unit) {
         val map = narrativeKernel.generate3DMap(maxPoints = 50)
         entities = map.points
@@ -180,13 +194,8 @@ private fun generateSampleTokens(): List<VisualToken> {
     return listOf(
         VisualToken("Tenger", 0.95f, 0f),
         VisualToken("Szabadság", 0.92f, (PI / 6).toFloat()),
-        VisualToken("Végtelen", 0.88f, (PI / 3).toFloat()),
         VisualToken("Szeretet", 0.85f, (PI / 2).toFloat()),
-        VisualToken("Fény", 0.78f, (2 * PI / 3).toFloat()),
         VisualToken("Emlékezet", 0.72f, (5 * PI / 6).toFloat()),
-        VisualToken("Magány", 0.65f, PI.toFloat()),
-        VisualToken("Félelem", 0.60f, (7 * PI / 6).toFloat()),
-        VisualToken("Árnyék", 0.55f, (4 * PI / 3).toFloat()),
         VisualToken("Halál", 0.45f, (3 * PI / 2).toFloat())
     )
 }
@@ -204,3 +213,4 @@ fun MeaningAppTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
+
