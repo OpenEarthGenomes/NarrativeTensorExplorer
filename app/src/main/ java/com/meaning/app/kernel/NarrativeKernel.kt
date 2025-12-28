@@ -4,11 +4,10 @@ import com.meaning.app.db.NarrativeDao
 import com.meaning.app.db.QuantizedNarrativeEntity
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.pow
 import kotlin.math.sqrt
-import kotlin.system.measureTimeMillis
 
 class NarrativeKernel(
     private val dao: NarrativeDao,
@@ -33,13 +32,13 @@ class NarrativeKernel(
         
         val startTime = System.nanoTime()
         
-        // Kvantálás
+        // Kvantálás (Int8 konverzió a gyorsításhoz)
         val quantizedQuery = QuantizationEngine.quantizeToINT8(queryVector)
         
-        // Összes vektor betöltése
+        // Összes vektor betöltése (később optimalizálható chunk-olt betöltésre)
         val allEntities = dao.getAllStream().first()
         
-        // Párhuzamos keresés
+        // Párhuzamos keresés (Chunk-okra osztva a processzor magok szerint)
         val chunkSize = maxOf(1, allEntities.size / parallelDegree)
         val chunks = allEntities.chunked(chunkSize)
         
@@ -49,7 +48,7 @@ class NarrativeKernel(
             }
         }.awaitAll().flatten()
         
-        // Rendezés és limit
+        // Rendezés és a legjobb 'k' találat kiválasztása
         val sortedResults = results
             .sortedByDescending { it.similarity }
             .take(k)
@@ -72,6 +71,7 @@ class NarrativeKernel(
         val results = mutableListOf<SearchResult>()
         
         chunk.forEach { entity ->
+            // Itt használjuk a NEON-optimalizált hasonlóság számítást
             val similarity = QuantizationEngine.calculateSimilarity(query, entity.vectorInt8)
             
             if (similarity >= minSimilarity) {
@@ -98,7 +98,7 @@ class NarrativeKernel(
         val center = centerEntityId?.let { dao.getById(it) }
         
         val points = if (center != null) {
-            // Középpont körüli tér
+            // Középpont körüli entitások lekérése
             dao.getInBoundingBox(
                 minX = center.coordX - radius,
                 maxX = center.coordX + radius,
@@ -109,11 +109,11 @@ class NarrativeKernel(
                 limit = maxPoints
             )
         } else {
-            // Véletlen tér
+            // Véletlen minta az erdőből, ha nincs középpont
             dao.getInBoundingBox(-1f, 1f, -1f, 1f, -1f, 1f, maxPoints)
         }
         
-        // Kapcsolatok generálása
+        // Dinamikus kapcsolatok generálása a megjelenített pontok között
         val connections = generateConnections(points)
         
         return NarrativeMap3D(
@@ -123,12 +123,12 @@ class NarrativeKernel(
             metrics = MapMetrics(
                 pointCount = points.size,
                 connectionCount = connections.size,
-                averageDensity = points.map { it.semanticDensity }.average().toFloat()
+                averageDensity = if (points.isNotEmpty()) points.map { it.semanticDensity }.average().toFloat() else 0f
             )
         )
     }
     
-    // === KAPCSOLAT GENERÁLÁS ===
+    // === KAPCSOLAT GENERÁLÁS (DINAMIKUS) ===
     private fun generateConnections(
         points: List<QuantizedNarrativeEntity>,
         maxConnections: Int = 5
@@ -136,7 +136,7 @@ class NarrativeKernel(
         val connections = mutableListOf<NarrativeConnection>()
         
         points.forEachIndexed { i, entityA ->
-            // Legközelebbi szomszédok keresése 3D térben
+            // Legközelebbi szomszédok keresése 3D euklideszi távolság alapján
             val neighbors = points
                 .filterIndexed { j, _ -> j != i }
                 .sortedBy { entityB ->
@@ -145,14 +145,19 @@ class NarrativeKernel(
                 .take(maxConnections)
             
             neighbors.forEach { entityB ->
+                // Sémantikai hasonlóság számítása
                 val similarity = QuantizationEngine.calculateSimilarity(
                     entityA.vectorInt8,
                     entityB.vectorInt8
                 )
                 
+                // Csak akkor kötjük össze, ha van értelme (hasonlóság > 0.5)
                 if (similarity > 0.5f) {
+                    val dist3D = calculateEuclideanDistance(entityA, entityB)
+                    
                     connections.add(
                         NarrativeConnection(
+                            id = 0, // Memóriában lévő kapcsolat, nincs DB ID-ja
                             fromId = entityA.id,
                             toId = entityB.id,
                             strength = similarity,
@@ -160,7 +165,10 @@ class NarrativeKernel(
                                 entityA.metaphorFamily,
                                 entityB.metaphorFamily
                             ),
-                            distance3D = calculateEuclideanDistance(entityA, entityB)
+                            distance3D = dist3D,
+                            semanticSimilarity = similarity,
+                            creationTime = System.currentTimeMillis(),
+                            usageCount = 0
                         )
                     )
                 }
@@ -173,21 +181,25 @@ class NarrativeKernel(
     // === REAL-TIME STREAM ===
     fun observeNarrativeSpace(): Flow<NarrativeMap3D> {
         return dao.getAllStream().map { entities ->
-            val connections = generateConnections(entities.take(50))
+            // Teljesítmény okokból csak az első 50 elemre generálunk kapcsolatokat
+            val activeEntities = entities.take(50)
+            val connections = generateConnections(activeEntities)
+            
             NarrativeMap3D(
-                points = entities,
+                points = entities, // De az összes pontot visszaadjuk
                 connections = connections,
                 center = null,
                 metrics = MapMetrics(
                     pointCount = entities.size,
                     connectionCount = connections.size,
-                    averageDensity = entities.map { it.semanticDensity }.average().toFloat()
+                    averageDensity = if (entities.isNotEmpty()) entities.map { it.semanticDensity }.average().toFloat() else 0f
                 )
             )
         }
     }
     
     // === SEGÉDFÜGGVÉNYEK ===
+    
     private fun calculateEuclideanDistance(
         a: QuantizedNarrativeEntity,
         b: QuantizedNarrativeEntity
@@ -199,10 +211,10 @@ class NarrativeKernel(
     }
     
     private fun calculate3DDistance(entity: QuantizedNarrativeEntity, query: ByteArray): Float {
-        // Egyszerűsített 3D távolság becslés
+        // Dekvantálás a pontosabb távolságszámításhoz (becslés)
         val vector = QuantizationEngine.dequantizeFromINT8(
             entity.vectorInt8,
-            entity.semanticDensity * 10f // Becsült max
+            entity.semanticDensity * 10f // Becsült skála
         )
         
         val queryFloat = QuantizationEngine.dequantizeFromINT8(
@@ -233,7 +245,9 @@ class NarrativeKernel(
         resultsFound: Int,
         processingTime: Long
     ) {
-        val avgTime = totalProcessingTime.get() / queriesProcessed.get().toFloat()
+        val avgTime = if (queriesProcessed.get() > 0) 
+            totalProcessingTime.get() / queriesProcessed.get().toFloat() 
+        else 0f
         
         println("""
             🔥 NARRATÍV KERNEL 🔥
@@ -246,31 +260,3 @@ class NarrativeKernel(
         """.trimIndent())
     }
 }
-
-// === ADAT STRUKTÚRÁK ===
-data class SearchResult(
-    val entity: QuantizedNarrativeEntity,
-    val similarity: Float,
-    val distance3D: Float
-)
-
-data class NarrativeMap3D(
-    val points: List<QuantizedNarrativeEntity>,
-    val connections: List<NarrativeConnection>,
-    val center: QuantizedNarrativeEntity?,
-    val metrics: MapMetrics
-)
-
-data class NarrativeConnection(
-    val fromId: Long,
-    val toId: Long,
-    val strength: Float,
-    val connectionType: String,
-    val distance3D: Float
-)
-
-data class MapMetrics(
-    val pointCount: Int,
-    val connectionCount: Int,
-    val averageDensity: Float
-)
