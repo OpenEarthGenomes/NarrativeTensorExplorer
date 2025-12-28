@@ -21,23 +21,29 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # Ez kell a Kotlin/Java projekthez, különben nem tud buildelni
+    # 1. Beállítjuk a Java-t (Ez kötelező a Gradle-hez)
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
+        cache: 'gradle' # Gyorsítja a következő futtatást
 
+    # 2. Inicializáljuk a CodeQL-t
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        # Ha nincs C++ a kódban, a 'cpp'-t töröld ki innen
         languages: 'java-kotlin' 
         queries: security-and-quality
 
-    # JAVÍTVA: A helyes akció elérési útja
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
+    # 3. MANUÁLIS BUILD (Az Autobuild helyett)
+    # Ez a rész megadja a futtatási jogot a gradlew-nek és lefordítja az appot
+    - name: Build with Gradle
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
+    # 4. Elemzés futtatása
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
+
