@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Narratív Térhajózó</string>
+    <string name="search_hint">Keresés a metaforák között...</string>
+    <string name="search_button">Keresés a térben</string>
+    <string name="camera_title">Kamera</string>
+    <string name="reset_camera">Kamera alaphelyzet</string>
+    <string name="zoom_in">Nagyítás</string>
+    <string name="zoom_out">Kicsinyítés</string>
+    <string name="export_data">Adatok exportálása</string>
+    <string name="loading">Betöltés...</string>
+    <string name="error_loading">Hiba a betöltés során</string>
+    <string name="no_results">Nincs találat</string>
+    <string name="vectors_count">%d vektor</string>
+    <string name="connections_count">%d kapcsolat</string>
+</resources>
