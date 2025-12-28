@@ -21,29 +21,32 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 1. Beállítjuk a Java-t (Ez kötelező a Gradle-hez)
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: 'gradle' # Gyorsítja a következő futtatást
 
-    # 2. Inicializáljuk a CodeQL-t
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: 'java-kotlin' 
         queries: security-and-quality
 
-    # 3. MANUÁLIS BUILD (Az Autobuild helyett)
-    # Ez a rész megadja a futtatási jogot a gradlew-nek és lefordítja az appot
+    # ÖNBIZTOS BUILD: Megkeresi a gradlew-t bárhol a repóban
     - name: Build with Gradle
       run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        GRADLEW_FILE=$(find . -name "gradlew" | head -n 1)
+        if [ -z "$GRADLEW_FILE" ]; then
+          echo "HIBA: Nem található gradlew fájl! Próbálkozás gradle paranccsal..."
+          gradle assembleDebug --no-daemon
+        else
+          echo "Talált gradlew: $GRADLEW_FILE"
+          chmod +x "$GRADLEW_FILE"
+          # Belépünk a mappába, ahol a gradlew van, és onnan futtatjuk
+          cd "$(dirname "$GRADLEW_FILE")"
+          ./gradlew assembleDebug --no-daemon
+        fi
 
-    # 4. Elemzés futtatása
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
-
