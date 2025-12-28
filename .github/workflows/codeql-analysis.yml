@@ -21,7 +21,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 1. Java környezet beállítása (szükséges a Gradle futtatáshoz)
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -29,35 +28,27 @@ jobs:
         distribution: 'temurin'
         cache: 'gradle'
 
-    # 2. CodeQL inicializálása
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        # Itt adjuk meg a nyelveket. A C++ és a Java/Kotlin is fontos.
         languages: 'java-kotlin, cpp'
         queries: security-and-quality
 
-    # 3. OKOS BUILD: Megkeresi a gradlew-t és lefordítja a projektet
     - name: Build with Gradle
       run: |
-        # Megkeressük a gradlew fájlt bárhol a projektben
+        # Megkeressük a gradlew-t bárhol a projektben
         GRADLEW_FILE=$(find . -name "gradlew" | head -n 1)
         
         if [ -z "$GRADLEW_FILE" ]; then
-          echo "HIBA: Nem található gradlew fájl! Próbálkozás standard gradle paranccsal..."
+          echo "Nem találom a gradlew-t, standard gradle build indítása..."
           gradle assembleDebug --no-daemon
         else
-          echo "Talált gradlew: $GRADLEW_FILE"
+          echo "Gradlew megtalálva itt: $GRADLEW_FILE"
           chmod +x "$GRADLEW_FILE"
-          
-          # Belépünk abba a mappába, ahol a gradlew van
           GRADLE_DIR=$(dirname "$GRADLEW_FILE")
           cd "$GRADLE_DIR"
-          
-          # Futtatjuk a buildet (ez fordítja le a Kotlin és a C++ kódot is)
           ./gradlew assembleDebug --no-daemon
         fi
 
-    # 4. Elemzés végrehajtása
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
