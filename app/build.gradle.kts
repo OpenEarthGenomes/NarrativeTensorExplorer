@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.meaning.app" // ✅ VÉGLEGES
+    namespace = "com.meaning.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.meaning.app" // ✅ VÉGLEGES
+        applicationId = "com.meaning.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -23,6 +23,27 @@ android {
             }
         }
     }
-    // ... többi rész változatlan
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+    buildFeatures { compose = true }
 }
 
+dependencies {
+    val roomVersion = "2.6.1"
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.compose.ui:ui:1.7.5")
+    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
+}
