@@ -32,7 +32,6 @@ abstract class NarrativeDatabase : RoomDatabase() {
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
-                        // Első indításkor látványos adatok generálása
                         CoroutineScope(Dispatchers.IO).launch {
                             populateInitialData(getInstance(context))
                         }
@@ -48,14 +47,13 @@ abstract class NarrativeDatabase : RoomDatabase() {
             val dao = database.narrativeDao()
             if (dao.getCount() > 0) return
 
-            val basicMetaphors = listOf(
+            // Példa kezdőadatok (csak hogy ne legyen üres)
+            val seeds = listOf(
                 Triple("tenger", "természet", floatArrayOf(0.1f, 0.8f, -0.4f)),
-                Triple("szabadság", "érzelem", floatArrayOf(0.5f, 0.2f, 0.9f)),
-                Triple("hegy", "természet", floatArrayOf(-0.3f, 0.7f, 0.1f)),
-                Triple("idő", "absztrakt", floatArrayOf(0.0f, 0.0f, 0.8f))
+                Triple("szabadság", "érzelem", floatArrayOf(0.5f, 0.2f, 0.9f))
             )
             
-            basicMetaphors.forEach { (term, family, vector) ->
+            seeds.forEach { (term, family, vector) ->
                 dao.insert(QuantizedNarrativeEntity(
                     term = term,
                     metaphorFamily = family,
@@ -63,8 +61,7 @@ abstract class NarrativeDatabase : RoomDatabase() {
                     coordX = vector[0],
                     coordY = vector[1],
                     coordZ = vector[2],
-                    vectorInt8 = QuantizationEngine.quantizeToINT8(vector),
-                    vectorFP32 = null
+                    vectorInt8 = QuantizationEngine.quantizeToINT8(vector)
                 ))
             }
         }
