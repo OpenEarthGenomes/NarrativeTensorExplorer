@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // id("kotlin-kapt") <- EZT TÖRÖLTÜK, mert a KSP-t használod lentebb
     id("com.google.devtools.ksp")
     id("kotlin-parcelize")
     id("androidx.benchmark")
@@ -14,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.meaning.app"
-        minSdk = 26 
+        minSdk = 26
         targetSdk = 35
         versionCode = 11
         versionName = "1.1-PRO"
@@ -38,6 +37,16 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            // A GitHub Secrets-ből jövő környezeti változók
+            storeFile = file(System.getenv("RELEASE_KEYSTORE_PATH") ?: "debug.keystore")
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debug"
@@ -46,7 +55,7 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -66,16 +75,18 @@ android {
         buildConfig = true
     }
 
-    // FIGYELEM: Ha nincs C++ kódod, ezt a részt kommentezd ki (tedd // elé), 
-    // különben a GitHub Actions hibát fog dobni!
-    /*
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
     }
-    */
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
 
 dependencies {
@@ -89,10 +100,10 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
 
-    // ROOM + KSP
+    // ROOM + KSP (Modern és gyors)
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion") 
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
     implementation("com.jakewharton.timber:timber:5.0.1")
