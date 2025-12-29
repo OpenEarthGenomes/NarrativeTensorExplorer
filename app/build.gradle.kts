@@ -1,65 +1,71 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.meaning.app"
-    compileSdk = 35
+    compileSdk = 35 // Android 15/16 támogatás
 
     defaultConfig {
         applicationId = "com.meaning.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.1-PRO"
+        versionCode = 1
+        versionName = "1.0-A35-Fix"
 
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+
+        // C++ Fordítási beállítások az Android 16-hoz
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++20")
-                arguments("-DANDROID_STL=c++_shared")
+                // Ez a sor a legfontosabb a 120Hz/Android 16 stabilitáshoz:
+                arguments("-DANDROID_STL=c++_shared", "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384")
                 abiFilters("arm64-v8a")
             }
-        }
-    }
-
-    packaging {
-        jniLibs {
-            // Kritikus javítás Android 16 / Galaxy A35 stabilitáshoz
-            useLegacyPackaging = true
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
-        }
-        debug {
-            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
-
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
+    
+    kotlinOptions {
+        jvmTarget = "17"
     }
 
     buildFeatures {
         compose = true
     }
 
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.1"
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            // Android 16-os Samsungokon ez segít a natív könyvtár betöltésében
+            useLegacyPackaging = true
+        }
+    }
+
     externalNativeBuild {
         cmake {
-            // Ellenőrizd, hogy az útvonal pontosan ez-e a GitHubon!
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
@@ -67,15 +73,20 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.15.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
-    implementation("androidx.activity:activity-compose:1.9.3")
-    implementation(platform("androidx.compose:compose-bom:2024.11.00"))
+    // Alapvető Android és Compose függőségek
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation(platform("androidx.compose:compose-bom:2023.08.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.material3:material3:1.3.1")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
     
-    val roomVersion = "2.6.1"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    // Coroutines a háttérszálas indításhoz
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
