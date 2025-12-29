@@ -11,60 +11,60 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.*
+import com.meaning.app.kernel.QuantizationEngine
 
 class MainActivity : ComponentActivity() {
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // C++ Könyvtár betöltése
-        val kernelLoaded = try {
-            System.loadLibrary("meaning_kernel")
-            true
-        } catch (e: Throwable) { false }
+        // Kernel példányosítása a JNI teszteléséhez
+        val engine = QuantizationEngine()
 
         setContent {
-            var searchText by remember { mutableStateOf("") }
-            val results = remember { mutableStateListOf<String>() }
-            var zoomLevel by remember { mutableStateOf(16f) }
+            var text by remember { mutableStateOf("") }
+            val items = remember { mutableStateListOf<String>() }
+            var zoom by remember { mutableStateOf(16f) }
 
             MaterialTheme(colorScheme = darkColorScheme()) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Narrative Tensor Explorer", fontSize = (zoomLevel + 4).sp)
+                        Text("Narrative Explorer v1.1", fontSize = (zoom + 4).sp)
                         
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         
                         OutlinedTextField(
-                            value = searchText,
-                            onValueChange = { searchText = it },
-                            label = { Text("Keresés (Adatbázis szimuláció)") },
+                            value = text, 
+                            onValueChange = { text = it }, 
+                            label = { Text("Bevitel") },
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), 
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Button(onClick = { 
-                                if (searchText.isNotBlank()) {
-                                    results.add(0, "Bevitel: $searchText | Kernel: ${if(kernelLoaded) "OK" else "HIBA"}")
-                                    searchText = ""
+                                if(text.isNotBlank()) {
+                                    items.add(0, text)
+                                    text = "" 
                                 }
-                            }) { Text("Indítás") }
-
+                            }) { Text("Mentés") }
+                            
                             Row {
-                                Button(onClick = { zoomLevel += 2f }) { Text("+") }
+                                Button(onClick = { zoom += 2f }) { Text("+") }
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Button(onClick = { zoomLevel -= 2f }) { Text("-") }
+                                Button(onClick = { zoom -= 2f }) { Text("-") }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
-                        
-                        LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(results) { item ->
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(items) { item ->
                                 Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                                    Text(item, modifier = Modifier.padding(12.dp), fontSize = zoomLevel.sp)
+                                    Text(
+                                        text = item, 
+                                        fontSize = zoom.sp, 
+                                        modifier = Modifier.padding(12.dp)
+                                    )
                                 }
                             }
                         }
