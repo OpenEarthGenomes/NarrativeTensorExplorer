@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    // Ez kell ide is:
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -29,16 +28,14 @@ android {
         compose = true
     }
 
-    // FONTOS: A régi composeOptions blokkot (kotlinCompilerExtensionVersion) TELJESEN TÖRÖLD KI! 
-    // Kotlin 2.0 alatt már nincs rá szükség.
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    // A Gradle 9 által kért új formátum a kotlinOptions helyett
+    kotlin {
+        jvmToolchain(17)
     }
 
     packaging {
@@ -56,13 +53,14 @@ android {
 }
 
 dependencies {
+    // Fix verziók a BOM helyett, hogy elkerüljük a "Cannot mutate" hibát
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
-    implementation(platform("androidx.compose:compose-bom:2024.02.00")) // Frissítve
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
+    
+    implementation("androidx.compose.ui:ui:1.6.7")
+    implementation("androidx.compose.ui:ui-graphics:1.6.7")
+    implementation("androidx.compose.material3:material3:1.2.1")
+    
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
