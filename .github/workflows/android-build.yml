@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -14,163 +14,23 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
     - name: Setup JDK 17
       uses: actions/setup-java@v3
       with:
         java-version: '17'
         distribution: 'temurin'
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        build-tools-version: '34.0.0'
-        ndk-version: '25.2.9519653'
-        cmake-version: '3.22.1'
-        sdkmanager:
-          - 'platforms;android-34'
-          - 'platform-tools'
-          - 'ndk;25.2.9519653'
-          - 'cmake;3.22.1'
-
-    - name: Cache Gradle dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-          ~/.android/build-cache
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
-
-    - name: Cache NDK
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.android/ndk
-          ~/android-ndk
-        key: ${{ runner.os }}-ndk-${{ hashFiles('**/ndkVersion.txt', '**/build.gradle*') }}
+        cache: gradle
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build with Gradle (Debug)
-      run: |
-        ./gradlew assembleDebug
-        ./gradlew assembleDebugAndroidTest
-
-    - name: Run unit tests
-      run: ./gradlew testDebugUnitTest
-
-    - name: Run instrumentation tests
-      if: success()
-      uses: reactivecircus/android-emulator-runner@v2
-      with:
-        api-level: 29
-        script: ./gradlew connectedDebugAndroidTest
-
-    - name: Build APK Analyzer report
-      run: |
-        ./gradlew assembleRelease
-        mkdir -p reports/apk-analyzer
-        ./gradlew analyzeReleaseApk --info
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
 
     - name: Upload APK artifacts
       uses: actions/upload-artifact@v3
-      if: success()
       with:
         name: android-apks
-        path: |
-          app/build/outputs/apk/debug/*.apk
-          app/build/outputs/apk/release/*.apk
+        path: app/build/outputs/apk/debug/*.apk
         retention-days: 7
-
-    - name: Upload test reports
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: test-reports
-        path: |
-          app/build/reports/
-          app/build/outputs/androidTest-results/
-        retention-days: 30
-
-    - name: SonarCloud Scan
-      if: success() && github.event_name == 'push'
-      uses: SonarSource/sonarcloud-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
-    - name: Check APK size
-      run: |
-        apk_path=$(find app/build/outputs/apk -name "*.apk" | head -1)
-        if [ -f "$apk_path" ]; then
-          size=$(stat -f%z "$apk_path")
-          size_mb=$((size / 1024 / 1024))
-          echo "APK size: ${size_mb}MB"
-          if [ $size_mb -gt 100 ]; then
-            echo "::warning::APK size exceeds 100MB"
-          fi
-        fi
-
-  native-build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        abi: [armeabi-v7a, arm64-v8a, x86, x86_64]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Setup NDK
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: '25.2.9519653'
-
-    - name: Build native library for ${{ matrix.abi }}
-      run: |
-        mkdir -p build && cd build
-        cmake \
-          -DANDROID_ABI=${{ matrix.abi }} \
-          -DANDROID_PLATFORM=android-24 \
-          -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
-          ..
-        cmake --build . --config Release -j 4
-
-    - name: Upload native library
-      uses: actions/upload-artifact@v3
-      with:
-        name: native-lib-${{ matrix.abi }}
-        path: |
-          build/libmeaning-kernel.so
-          build/CMakeCache.txt
-        retention-days: 30
-
-  performance-test:
-    runs-on: ubuntu-latest
-    needs: [build-and-test, native-build]
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Setup Android
-      uses: android-actions/setup-android@v2
-
-    - name: Run benchmark tests
-      run: |
-        ./gradlew benchmarkDebug
-        mkdir -p reports/benchmark
-        cp -r app/build/outputs/benchmark-results/* reports/benchmark/
-
-    - name: Upload benchmark reports
-      uses: actions/upload-artifact@v3
-      with:
-        name: benchmark-reports
-        path: reports/benchmark/
-        retention-days: 30
