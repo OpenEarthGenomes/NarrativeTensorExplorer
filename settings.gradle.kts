@@ -13,7 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NarrativeTensorExplorer" // ✅ A GitHub Repo neve lehet ez
-include(":app")
-include(":benchmark")
-
+rootProject.name = "NarrativeTensorExplorer"
+include(":app") // Csak az app marad!
