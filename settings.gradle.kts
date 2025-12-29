@@ -5,7 +5,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
+    // Kényszeríti, hogy minden modul ugyanazokat a forrásokat használja
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
@@ -13,5 +15,8 @@ dependencyResolutionManagement {
     }
 }
 
+// A projekt neve a fejlesztői környezetben
 rootProject.name = "NarrativeTensorExplorer"
-include(":app") // Csak az app marad!
+
+// Csak az app modult vesszük bele, minden mást töröltünk
+include(":app")
