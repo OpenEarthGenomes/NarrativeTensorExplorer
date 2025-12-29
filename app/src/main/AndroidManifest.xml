@@ -2,13 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:allowBackup="true"
-        android:label="Narrative Explorer"
-        android:icon="@android:drawable/ic_menu_search"
+        android:label="Meaning Offline"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-        <activity 
-            android:name="com.meaning.app.MainActivity" 
-            android:exported="true"
-            android:configChanges="orientation|screenSize|screenLayout">
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
