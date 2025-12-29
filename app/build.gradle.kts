@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose") // EZ HIÁNYZOTT
     id("com.google.devtools.ksp")
 }
 
@@ -14,8 +15,6 @@ android {
         targetSdk = 35
         versionCode = 11
         versionName = "1.1-PRO"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         externalNativeBuild {
             cmake {
@@ -40,8 +39,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    // Modernizált Kotlin beállítások (a hibaüzenet javaslata alapján)
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     buildFeatures {
