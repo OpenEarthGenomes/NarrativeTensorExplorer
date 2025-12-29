@@ -1,21 +1,27 @@
 cmake_minimum_required(VERSION 3.22.1)
 
+# A projekt neve (ez fog megjelenni a build logokban)
 project("meaning-kernel")
 
-add_library(meaning-kernel SHARED meaning-kernel.cpp)
+# Itt adjuk hozzá a C++ forrásfájlt
+add_library(
+    meaning-kernel 
+    SHARED 
+    meaning-kernel.cpp
+)
 
-target_include_directories(meaning-kernel PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
+# Megkeressük az Android logoláshoz szükséges könyvtárat
 find_library(log-lib log)
 
-target_link_libraries(meaning-kernel ${log-lib} android)
+# Összekötjük a kódunkat a szükséges rendszerkönyvtárakkal
+target_link_libraries(
+    meaning-kernel 
+    ${log-lib} 
+    android
+)
 
+# Alapvető beállítások: C++20 szabvány és optimalizálás
 target_compile_options(meaning-kernel PRIVATE
     -std=c++20
-    -Wall
-    -Wextra
-    -Werror
-    -pedantic
-    -march=armv8-a
-    -mtune=cortex-a75
+    -O2
 )
