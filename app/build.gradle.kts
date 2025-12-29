@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.meaning.app"
-    [span_0](start_span)compileSdk = 35 // Android 16-hoz a 35/36-os SDK az irányadó[span_0](end_span)
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.meaning.app"
@@ -20,14 +20,15 @@ android {
             cmake {
                 cppFlags("-std=c++20")
                 arguments("-DANDROID_STL=c++_shared")
-                [span_1](start_span)abiFilters("arm64-v8a") // Az A35 64-bites, ez a legstabilabb[span_1](end_span)
+                abiFilters("arm64-v8a")
             }
         }
     }
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true // Ez kell az Android 16 stabilitásához
+            // Kritikus javítás Android 16 / Galaxy A35 stabilitáshoz
+            useLegacyPackaging = true
         }
     }
 
@@ -35,6 +36,9 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
 
@@ -55,6 +59,7 @@ android {
 
     externalNativeBuild {
         cmake {
+            // Ellenőrizd, hogy az útvonal pontosan ez-e a GitHubon!
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
         }
@@ -67,6 +72,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation(platform("androidx.compose:compose-bom:2024.11.00"))
     implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.material3:material3:1.3.1")
     
     val roomVersion = "2.6.1"
