@@ -5,7 +5,6 @@
 #include <android/log.h>
 
 #define LOG_TAG "MeaningKernel"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 extern "C" JNIEXPORT jfloat JNICALL
 Java_com_meaning_app_kernel_QuantizationEngine_calculateVectorDistance(
@@ -43,16 +42,22 @@ Java_com_meaning_app_kernel_QuantizationEngine_transform3DCoordinates(
     jfloat* p = env->GetFloatArrayElements(points, nullptr);
     jfloat* m = env->GetFloatArrayElements(matrix, nullptr);
 
-    float32x4_t m0 = vld1q_f32(m);
-    float32x4_t m1 = vld1q_f32(m + 4);
-    float32x4_t m2 = vld1q_f32(m + 8);
+    float32x4_t m0 = vld1q_f32(m);     // Mátrix 1. sor
+    float32x4_t m1 = vld1q_f32(m + 4); // Mátrix 2. sor
+    float32x4_t m2 = vld1q_f32(m + 8); // Mátrix 3. sor
 
     for (int i = 0; i < pointCount * 3; i += 3) {
+        // Vektor betöltése [x, y, z, 1.0]
         float32x4_t v = {p[i], p[i+1], p[i+2], 1.0f};
         
-        p[i]   = vgetq_lane_f32(vdotq_f32(v, m0, v), 0); // Egyszerűsített vetítés
-        p[i+1] = vgetq_lane_f32(vdotq_f32(v, m1, v), 1);
-        p[i+2] = vgetq_lane_f32(vdotq_f32(v, m2, v), 2);
+        // Kompatibilis mátrix szorzás vdotq_f32 nélkül
+        float32x4_t r0 = vmulq_f32(v, m0);
+        float32x4_t r1 = vmulq_f32(v, m1);
+        float32x4_t r2 = vmulq_f32(v, m2);
+
+        p[i]   = vgetq_lane_f32(r0, 0) + vgetq_lane_f32(r0, 1) + vgetq_lane_f32(r0, 2) + vgetq_lane_f32(r0, 3);
+        p[i+1] = vgetq_lane_f32(r1, 0) + vgetq_lane_f32(r1, 1) + vgetq_lane_f32(r1, 2) + vgetq_lane_f32(r1, 3);
+        p[i+2] = vgetq_lane_f32(r2, 0) + vgetq_lane_f32(r2, 1) + vgetq_lane_f32(r2, 2) + vgetq_lane_f32(r2, 3);
     }
 
     env->ReleaseFloatArrayElements(points, p, 0);
