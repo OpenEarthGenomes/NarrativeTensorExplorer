@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose") // EZ HIÁNYZOTT
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
@@ -27,9 +27,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = false // Teszteléshez kikapcsolva
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -39,7 +37,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // Modernizált Kotlin beállítások (a hibaüzenet javaslata alapján)
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -48,7 +45,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     externalNativeBuild {
@@ -61,10 +57,14 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
-    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
+    
+    // COMPOSE ÉS MATERIAL3 - EZ KELL A TÉMÁHOZ
+    implementation(platform("androidx.compose:compose-bom:2024.11.00"))
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.material3:material3:1.3.1") // Konkrét verzió
     
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
