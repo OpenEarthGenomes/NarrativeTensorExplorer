@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.meaning.app"
-    compileSdk = 35
+    [span_0](start_span)compileSdk = 35 // Android 16-hoz a 35/36-os SDK az irányadó[span_0](end_span)
 
     defaultConfig {
         applicationId = "com.meaning.app"
@@ -20,14 +20,20 @@ android {
             cmake {
                 cppFlags("-std=c++20")
                 arguments("-DANDROID_STL=c++_shared")
-                abiFilters("arm64-v8a", "armeabi-v7a")
+                [span_1](start_span)abiFilters("arm64-v8a") // Az A35 64-bites, ez a legstabilabb[span_1](end_span)
             }
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true // Ez kell az Android 16 stabilitásához
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false // Teszteléshez kikapcsolva
+            isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -59,12 +65,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.9.3")
-    
-    // COMPOSE ÉS MATERIAL3 - EZ KELL A TÉMÁHOZ
     implementation(platform("androidx.compose:compose-bom:2024.11.00"))
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.material3:material3:1.3.1") // Konkrét verzió
+    implementation("androidx.compose.material3:material3:1.3.1")
     
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
