@@ -1,22 +1,19 @@
 pluginManagement {
     repositories {
-        google()
-        mavenCentral()
+        google()       // Kizárólag a hivatalos Google szerver
+        mavenCentral() // A legbiztonságosabb globális Java tárhely
         gradlePluginPortal()
     }
 }
 
 dependencyResolutionManagement {
-    // Kényszeríti, hogy minden modul ugyanazokat a forrásokat használja
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
-        mavenCentral()
+        google()       // Android 14 csomagok forrása
+        mavenCentral() // Minden egyéb stabil könyvtár forrása
+        // Itt NINCS kínai vagy indiai repo, így azokat nem fogja használni.
     }
 }
 
-// A projekt neve a fejlesztői környezetben
 rootProject.name = "NarrativeTensorExplorer"
-
-// Csak az app modult vesszük bele, minden mást töröltünk
 include(":app")
