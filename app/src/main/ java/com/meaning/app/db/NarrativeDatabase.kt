@@ -2,31 +2,24 @@ package com.meaning.app.db
 
 import android.content.Context
 import androidx.room.*
-import kotlinx.coroutines.flow.Flow
 
-@Entity(tableName = "narratives")
-data class NarrativeEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val content: String
+@Database(
+    entities = [
+        NarrativeEntity::class, 
+        QuantizedNarrativeEntity::class, 
+        NarrativeConnectionEntity::class
+    ], 
+    version = 1,
+    exportSchema = false
 )
-
-@Dao
-interface NarrativeDao {
-    @Query("SELECT * FROM narratives ORDER BY id DESC")
-    fun getAllNarratives(): Flow<List<NarrativeEntity>>
-
-    @Insert
-    suspend fun insert(narrative: NarrativeEntity)
-}
-
-@Database(entities = [NarrativeEntity::class], version = 1)
+@TypeConverters(Converters::class) // A Date kezeléséhez kell
 abstract class NarrativeDatabase : RoomDatabase() {
     abstract fun narrativeDao(): NarrativeDao
+    abstract fun connectionDao(): NarrativeConnectionDao
+    // Itt adhatsz hozzá egy speciális DAO-t a kvantált adatokhoz ha kell
 
     companion object {
-        @Volatile
-        private var INSTANCE: NarrativeDatabase? = null
-
+        @Volatile private var INSTANCE: NarrativeDatabase? = null
         fun getDatabase(context: Context): NarrativeDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
