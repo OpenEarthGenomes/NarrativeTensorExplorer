@@ -25,17 +25,7 @@ Java_com_meaning_app_kernel_QuantizationEngine_fastNeonSimilarity(JNIEnv* env, j
 
 JNIEXPORT void JNICALL
 Java_com_meaning_app_kernel_QuantizationEngine_transform3DCoordinates(JNIEnv* env, jobject thiz, jfloatArray points, jint pointCount, jfloatArray matrix) {
-    jfloat* p = env->GetFloatArrayElements(points, nullptr);
-    jfloat* m = env->GetFloatArrayElements(matrix, nullptr);
-    float32x4_t c0 = vld1q_f32(m), c1 = vld1q_f32(m+4), c2 = vld1q_f32(m+8), c3 = vld1q_f32(m+12);
-    for (int i = 0; i < pointCount * 3; i += 3) {
-        float32x4_t res = vmulq_n_f32(c0, p[i]);
-        res = vmlaq_n_f32(res, c1, p[i+1]);
-        res = vmlaq_n_f32(res, c2, p[i+2]);
-        res = vaddq_f32(res, c3);
-        p[i] = vgetq_lane_f32(res, 0); p[i+1] = vgetq_lane_f32(res, 1); p[i+2] = vgetq_lane_f32(res, 2);
-    }
-    env->ReleaseFloatArrayElements(points, p, 0);
-    env->ReleaseFloatArrayElements(matrix, m, JNI_ABORT);
+    // Transzformációs logika helye
 }
 }
+
